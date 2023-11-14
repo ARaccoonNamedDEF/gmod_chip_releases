@@ -5,8 +5,15 @@
 
 --[[
 
-        This Starfall chip is meant to migrate the constraints from one entity to another!
-    
+        This Starfall chip is meant to migrate the constraints from one entity to another! It doesn't get rid of them, though.
+        
+        To use it:
+        
+            Right-click the entity you want to get the constraints from, then right-click the entity you want to move the
+        constraints to.
+        
+            Be aware that the chip spawns enabled; toggle it by pressing < ToggleChip >!
+            
 ]]
 
 -- # # # Settings
