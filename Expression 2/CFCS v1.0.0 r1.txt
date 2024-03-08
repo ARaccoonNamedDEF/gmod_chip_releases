@@ -1,4 +1,4 @@
-@name CFCS v1.0.0 r1
+@name CFCS v1.0.0 r2
 
 #Community Fire Control System, a HUD E2 by DEF.
 
@@ -1222,7 +1222,7 @@ if(first() | dupefinished()) {
                 }
                 
                 # Done when past max range or CurData is unusable
-                if(CurData[1] >= ShadowCaster["MaxRange",number] | vec2(CurData[1], CurData[2]):toAngle() < -40) {
+                if(CurData[1] >= ShadowCaster["MaxRange",number] | toAngle(vec2(CurData[1], CurData[2])) < -40) {
                     
                     # # # Debug
                     if(ShadowCaster["Gun",entity] == MainGun) {
