@@ -1,4 +1,4 @@
-@name Primitive Polygon r5
+@name Primitive Polygon r6
 @model models/sprops/misc/origin.mdl
 @inputs [Props]:array
 @outputs 
@@ -227,7 +227,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointB
         Normal = (PointC - OriginPoint):normalized()
-        ToFlat = -Normal:toAngle()
+        ToFlat = -toAngle(Normal)
         
         RotatedLongest = (PointC - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointA - OriginPoint):rotate(ToFlat)
@@ -239,7 +239,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointA
         Normal = (PointC - OriginPoint):normalized()
-        ToFlat = -Normal:toAngle()
+        ToFlat = -toAngle(Normal)
         
         RotatedLongest = (PointC - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointB - OriginPoint):rotate(ToFlat)
@@ -251,7 +251,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointA
         Normal = (PointB - OriginPoint):normalized()
-        ToFlat = -Normal:toAngle()
+        ToFlat = -toAngle(Normal)
         
         RotatedLongest = (PointB - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointC - OriginPoint):rotate(ToFlat)
