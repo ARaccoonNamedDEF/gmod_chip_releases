@@ -127,8 +127,8 @@ if(first() | dupefinished()) {
         
         if(CoreInfo:exists("ECUInfo")) {
             ECU["Connected",number] = 1
-            M["ShiftUpRPM",number] = CoreInfo["ECUInfo",table]["BandMax",number] + M["MaxShiftRPM",number]
-            M["ShiftDownRPM",number] = CoreInfo["ECUInfo",table]["BandMin",number] + M["MinShiftRPM",number]
+            M["ShiftUpRPM",number] = CoreInfo["ECUInfo",table]["BandMax",number] + MaxShiftRPM
+            M["ShiftDownRPM",number] = CoreInfo["ECUInfo",table]["BandMin",number] + MinShiftRPM
         }
         
         M["DownShiftMul",number] = (M["ShiftUpRPM",number] - M["ShiftWidth",number]) / M["ShiftUpRPM",number]

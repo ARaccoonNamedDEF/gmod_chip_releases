@@ -286,7 +286,7 @@ event input(InputName:string) {
                 # Steering
                 if(!BrakeLatched) {
                     
-                    local SpeedMod = M["RefSpd",number] / (M["RefSpd",number] + SteerSet[2,number] * DecayMul)
+                    local SpeedMod = M["RefSpd",number] / (M["RefSpd",number] + SteerSet[3,number] * DecayMul)
                     local VelDir = sign(CoreInfo["Speed",number])
                     
                     local RawDifferential = M["SteerDir",number] * SteerSet[1,number]
