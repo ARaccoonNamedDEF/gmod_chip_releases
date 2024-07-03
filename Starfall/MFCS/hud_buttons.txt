@@ -227,7 +227,7 @@ if SERVER then
             
             local UpdateReceivers = GenerateRemove(Data.Receivers, ListenerLUT)
             
-            try(function() InitializeListeners(Data.PanelGroup, Data.Receivers) end)
+            timer.create("button-reset", 1, 1, function() InitializeListeners(Data.PanelGroup, Data.Receivers) end)
             
             -- # Set pressed on button & run server-side remote hook
             local function UpdateButton()
