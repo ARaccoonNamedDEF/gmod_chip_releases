@@ -1,4 +1,4 @@
-@name CFCS v1.0.0 r2
+@name CFCS v1.0.0 r3_toAngle fix
 
 #Community Fire Control System, a HUD E2 by DEF.
 

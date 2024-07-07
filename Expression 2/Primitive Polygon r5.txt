@@ -1,4 +1,4 @@
-@name Primitive Polygon r6
+@name Primitive Polygon r7_toAngle fix
 @model models/sprops/misc/origin.mdl
 @inputs [Props]:array
 @outputs 

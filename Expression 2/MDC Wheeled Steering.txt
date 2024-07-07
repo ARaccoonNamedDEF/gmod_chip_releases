@@ -1,4 +1,4 @@
-@name MDC Wheeled Steering
+@name MDC Wheeled Steering r1_toAngle fix
 @inputs StartLink STBLink CoreInfo:table InClutch
 @outputs SteerAngle Clutch Brake WeldLatch
 @persist [M STBInfo ECU STBSet SteerSet BrakeSet]:table

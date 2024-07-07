@@ -1,4 +1,4 @@
-@name ACF Trajectory Calculator
+@name ACF Trajectory Calculator r1_toAngle fix
 @inputs [Ammo]:array
 @outputs RangeTable:table
 @persist MaxRange TableRangeStep AngleCutoff RunLoop Iterations TryStep
