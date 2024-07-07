@@ -22,6 +22,8 @@
 
 ]#
 
+if(duped() | dupefinished()) { reset() }
+
 if(first() | dupefinished()) {
     
     M = table()
@@ -162,6 +164,11 @@ if(first() | dupefinished()) {
     # Send own information
     STBInfo["Ready",number] = 1
     if(ContributeData) { CoreInfo["STBInfo",table] = STBInfo }
+
+    # Does the same thing vec2:toAngle() does... or was it toAngle(vec2)? I can't tell anymore.
+    function number v2Angle(Vec2:vector2) {
+        return atan2(Vec2[2], Vec2[1]) * 180 / _PI
+    }
 }
 
 # > Keybinds
@@ -254,7 +261,7 @@ event input(InputName:string) {
             
             local RawAngle = M["SteerDir",number] * SteerSet[1,number]
             local AntiAV = CoreInfo["AngVelocity",vector][3] * VelDir * SteerSet[4,number]
-            local AntiDrift = SteerSet[5,number] * toAngle(
+            local AntiDrift = SteerSet[5,number] * v2Angle(
                 vec2(
                     max(abs(CoreInfo["Velocity",vector][1]), M["RefSpd",number]),
                     CoreInfo["Velocity",vector][2] * VelDir

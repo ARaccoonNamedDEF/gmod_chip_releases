@@ -1014,6 +1014,11 @@ if(first() | dupefinished()) {
         else {return 0}
     }
     
+    # Does the same thing vec2:toAngle() does... or was it toAngle(vec2)? I can't tell anymore.
+    function number v2Angle(Vec2:vector2) {
+        return atan2(Vec2[2], Vec2[1]) * 180 / _PI
+    }
+    
     
     # # # Linear interpolation
     function number lerpUDF(Norm, Min, Max) {return (Max - Min) * Norm + Min}
@@ -1222,7 +1227,7 @@ if(first() | dupefinished()) {
                 }
                 
                 # Done when past max range or CurData is unusable
-                if(CurData[1] >= ShadowCaster["MaxRange",number] | toAngle(vec2(CurData[1], CurData[2])) < -40) {
+                if(CurData[1] >= ShadowCaster["MaxRange",number] | v2Angle(vec2(CurData[1], CurData[2])) < -40) {
                     
                     # # # Debug
                     if(ShadowCaster["Gun",entity] == MainGun) {

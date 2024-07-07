@@ -6,6 +6,8 @@
 @persist [Status Slot]:string [ShellPos ShellVel OldVel OldPos Gravity]:vector2
 @trigger none
 
+if(duped() | dupefinished()) { reset() }
+
 if(first() | dupefinished()) {
     
     MaxRange = 400          # In meters
@@ -35,6 +37,11 @@ if(first() | dupefinished()) {
     }
     
     else { RunLoop = 0 }
+
+    # Does the same thing vec2:toAngle() does... or was it toAngle(vec2)? I can't tell anymore.
+    function number v2Angle(Vec2:vector2) {
+        return atan2(Vec2[2], Vec2[1]) * 180 / _PI
+    }
 }
 
 if(clk("Delay")) {
@@ -105,7 +112,7 @@ if(clk("Delay")) {
             }
             
             # Done
-            if(ShellPos[1] >= MaxRange & CurRange > MaxRange | toAngle(ShellPos) < -AngleCutoff & TryStep) {
+            if(ShellPos[1] >= MaxRange & CurRange > MaxRange | v2Angle(ShellPos) < -AngleCutoff & TryStep) {
                 
                 # More ammo crates
                 if(CurIndex < Ammo:count()) {

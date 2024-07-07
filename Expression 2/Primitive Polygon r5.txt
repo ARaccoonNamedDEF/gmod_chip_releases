@@ -6,6 +6,8 @@
 @persist [Points TempPoints Primitives]:array Triangles:table CurTriangle
 @trigger none
 
+if(duped() | dupefinished()) { reset() }
+
 if(first() | dupefinished()) {
     
     #[
@@ -99,6 +101,11 @@ if(first() | dupefinished()) {
                 break
             }
         }
+    }
+
+    # Does the same thing vec2:toAngle() does... or was it toAngle(vec2)? I can't tell anymore.
+    function number v2Angle(Vec2:vector2) {
+        return atan2(Vec2[2], Vec2[1]) * 180 / _PI
     }
     
     runOnKeys(owner(), 1)
@@ -227,7 +234,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointB
         Normal = (PointC - OriginPoint):normalized()
-        ToFlat = -toAngle(Normal)
+        ToFlat = -v2Angle(Normal)
         
         RotatedLongest = (PointC - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointA - OriginPoint):rotate(ToFlat)
@@ -239,7 +246,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointA
         Normal = (PointC - OriginPoint):normalized()
-        ToFlat = -toAngle(Normal)
+        ToFlat = -v2Angle(Normal)
         
         RotatedLongest = (PointC - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointB - OriginPoint):rotate(ToFlat)
@@ -251,7 +258,7 @@ if(clk("MoveTriangles")) {
         
         OriginPoint = PointA
         Normal = (PointB - OriginPoint):normalized()
-        ToFlat = -toAngle(Normal)
+        ToFlat = -v2Angle(Normal)
         
         RotatedLongest = (PointB - OriginPoint):rotate(ToFlat)
         RotatedShortest = (PointC - OriginPoint):rotate(ToFlat)
