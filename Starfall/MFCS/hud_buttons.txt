@@ -3,10 +3,8 @@
 --@shared
 
 local SH = {}
-local function AddPanel(Name) end
-local function AddButton(Name, IsToggle) end
-local function Group() end
-local function AddReceiver(Name) end
+local function Empty() end
+local AddPanel = Empty; local AddButton = Empty; local Group = Empty; local AddReceiver = Empty
 
 -- # # # # # # # # # # # # # # # --
 
@@ -108,14 +106,11 @@ end
 
 -- # # # # # # # # # # # # # # # --
 
-local cl_ChairEnter = "Chair-Enter"
-local cl_ChairExit = "Chair-Exit"
-local sv_UpdateButton = "Update-Button"
-local sv_MenuOpened = "Menu-Opened"
+local cl_ChairEnter = "Chair-Enter"; local cl_ChairExit = "Chair-Exit"
+local sv_UpdateButton = "Update-Button"; local sv_MenuOpened = "Menu-Opened"
+local NULL = game.getWorld()
 
-local function GenerateRemove(Entities, Lookup) end
-local function Broadcast(Entities, ...) end
-local function InitializeListeners(PanelGroup) end
+local GenerateRemove = Empty; local Broadcast = Empty; local InitializeListeners = Empty
 
 -- >> Shared functions
 do
@@ -138,7 +133,9 @@ do
     function Broadcast(Entities, ...)
         local id, bool = ...
         for _, receiver in ipairs(Entities) do
-            hook.runRemote(receiver, id, bool)
+            if receiver:hasInstance() then
+                hook.runRemote(receiver, id, bool)
+            end
         end
     end
     
@@ -153,13 +150,9 @@ do
 end
 
 if SERVER then
-    
-    -- >> Initialization
-    
-    local Data = {}
-    Data.PanelGroup = {}
-    Data.Receivers = {}
+    local Data = { PanelGroup = {}, Receivers = {} }
     local ReceiverIO = {}
+    local ChairEnt = NULL
     
     -- Panel design helpers
     do
@@ -187,34 +180,38 @@ if SERVER then
     
     UserSettings()
     
-    local function PersistIO() end
-    local function SetupIO() end
+    local SetupIO = Empty
+    local EnterChair = Empty; local UpdateButton = Empty; local MenuOpened = Empty
     
-    -- >> Primary functions
+    -- >> Startup functions
     do
-        -- Setup
-        local function Initialize()
-            local chairEnt = wire.ports.Chair
+        local PostIO = Empty; local OnDupeFinished = Empty
+        
+        -- Make new IO
+        function SetupIO()
+            local inputs = { "Chair" }; local inputTypes = { "Entity" }
+            local outputs = {}; local outputTypes = {}
+            
+            for _, receiver in ipairs(ReceiverIO) do
+                table.insert(inputs, receiver[1])
+                table.insert(inputTypes, "Entity")
+            end
+            
+            wire.adjustInputs(inputs, inputTypes)
+            wire.adjustOutputs(outputs, outputTypes)
+            
+            PostIO()
+        end
+        
+        -- After making IO
+        function PostIO()
+            ChairEnt = wire.ports.Chair
             
             -- # Look-ups for grouped buttons
             for _, panel in ipairs(Data.PanelGroup) do
                 panel.Grouped = {}
                 for k, btn in ipairs(panel.Buttons) do
                     if btn.Grouped then table.insert(panel.Grouped, k) end
-                end
-            end
-            
-            -- # Entering & exiting the vehicle
-            local function EnterChair(Ply, Chair, Board)
-                if chairEnt:isValid() and chairEnt == Chair then
-                    if Board then
-                        net.start(cl_ChairEnter)
-                            net.writeTable(Data)
-                        net.send(Ply)
-                    else
-                        net.start(cl_ChairExit)
-                        net.send(Ply)
-                    end
                 end
             end
             
@@ -226,67 +223,55 @@ if SERVER then
             end
             
             local UpdateReceivers = GenerateRemove(Data.Receivers, ListenerLUT)
-            
-            timer.create("button-reset", 1, 1, function() InitializeListeners(Data.PanelGroup, Data.Receivers) end)
-            
-            -- # Set pressed on button & run server-side remote hook
-            local function UpdateButton()
-                local ins = net.readTable()
-                local panel = Data.PanelGroup[ins[1]]
-                local btn = panel.Buttons[ins[2]]
-                
-                btn.Pressed = ins[3]
-                Broadcast(Data.Receivers, panel.PanelName .. "-" .. btn.ButtonName, btn.Pressed)
-            end
-            
-            -- # Server-side remote hook for opening & closing menu
-            local function MenuOpened()
-                Broadcast(Data.Receivers, "HUD_BUTTONS_OPENED", net.readBool())
-            end
+            InitializeListeners(Data.PanelGroup, Data.Receivers)
             
             hook.add("PlayerEnteredVehicle", "chair-enter", function(Ply, Chair) EnterChair(Ply, Chair, true) end)
             hook.add("PlayerLeaveVehicle", "chair-exit", function(Ply, Chair) EnterChair(Ply, Chair, false) end)
-            hook.add("DupeFinished", "dupe-finished", SetupIO)
             hook.add("EntityRemoved", "entity-removed", UpdateReceivers)
-            hook.add("StarfallError", "terminate", UpdateReceivers)
+            hook.add("DupeFinished", "dupe-finished", OnDupeFinished)
             net.receive(sv_UpdateButton, UpdateButton)
             net.receive(sv_MenuOpened, MenuOpened)
         end
         
-        -- Use already existing IO
-        function PersistIO()
-            local inputs = {}
-            local inputTypes = {}
-            inputs, inputTypes = wire.getInputs(chip())
-            wire.adjustInputs(inputs, inputTypes)
-            
-            Initialize()
+        function OnDupeFinished()
+            timer.create("spawn-delay", 1, 1, function() InitializeListeners(Data.PanelGroup, Data.Receivers) end)
+        end
+    end
+    
+    -- >> Other functions
+    do
+        -- Entering & exiting the vehicle
+        function EnterChair(Ply, Chair, Board)
+            if ChairEnt:isValid() and ChairEnt == Chair then
+                if Board then
+                    net.start(cl_ChairEnter)
+                        net.writeTable(Data)
+                    net.send(Ply)
+                else
+                    net.start(cl_ChairExit)
+                    net.send(Ply)
+                end
+            end
         end
         
-        -- Make new IO
-        function SetupIO()
-            local inputs = { "Chair" }
-            local inputTypes = { "Entity" }
+        -- Set pressed on button & run server-side remote hook
+        function UpdateButton()
+            local ins = net.readTable()
+            local panel = Data.PanelGroup[ins[1]]
+            local btn = panel.Buttons[ins[2]]
             
-            for _, receiver in ipairs(ReceiverIO) do
-                table.insert(inputs, receiver[1])
-                table.insert(inputTypes, "Entity")
-            end
-            
-            wire.adjustInputs(inputs, inputTypes)
-            
-            Initialize()
+            btn.Pressed = ins[3]
+            Broadcast(Data.Receivers, panel.PanelName .. "-" .. btn.ButtonName, btn.Pressed)
+        end
+        
+        -- Server-side remote hook for opening & closing menu
+        function MenuOpened()
+            Broadcast(Data.Receivers, "HUD_BUTTONS_OPENED", net.readBool())
         end
     end
     
-    -- >> Late initialization
-    
-    -- First execution depending on updated or duped
-    if table.count(wire.ports) == 0 then
-        SetupIO()
-    else
-        PersistIO()
-    end
+    -- Call startup
+    SetupIO()
 end
 
 if CLIENT then
@@ -306,19 +291,13 @@ if CLIENT then
     local ResX = 0; local ResY = 0
     ResX, ResY = render.getGameResolution()
     
-    local function Empty() end
-    local function ToggleMenu(Active) end
-    
-    local function DrawCursor(X, Y) end
-    local function DrawMain(Left, Top, Width, Height, Text, Pressed) end
-    local function DrawSmall(Left, Top, Width, Height, Pressed) end
-    local function DrawScreen(Left, Top, Width, Height, Content) end
-    local function DrawPanel(Left, Top, Width, Height) end
-    
     local LiveTexture = class("LiveTexture")
     local SC = {}
     local Keys = {}
     local Button = class("Button")
+    
+    local ToggleMenu = Empty; local DrawCursor = Empty
+    local DrawMain = Empty; local DrawSmall = Empty; local DrawScreen = Empty; local DrawPanel = Empty
     
     -- >> Primary functions
     do
@@ -331,12 +310,9 @@ if CLIENT then
         local MenuBTN = {}; local GeneralBTN = {}
         local DrawHook = "drawhud"
         
-        local function Initialize() end
-        local function SetPanel(Slot) end
-        local function UpdateScreen() end
-        local function ToggleFunc(Ind, Down) end
-        local function PressFunc(Ind, Down) end
-        local function DrawMenu() end
+        local Initialize = Empty; local DrawMenu = Empty
+        local SetPanel = Empty; local UpdateScreen = Empty
+        local ToggleFunc = Empty; local PressFunc = Empty
         
         -- Entering & exiting the vehicle
         local function EnterChair(Board)
@@ -639,7 +615,8 @@ if CLIENT then
     -- >> LiveTexture class
     do
         local ColWhite = Color(255, 255, 255)
-        local function BakeAll(LiveTexture) end
+        
+        local BakeAll = Empty
         
         function LiveTexture:initialize(ID)
             render.createRenderTarget(ID)
@@ -732,12 +709,11 @@ if CLIENT then
     -- >> Screen Collision; manages collisions for selection on 2D plane
     do
         local Items = {}
-        local Selection = {}
-        local OldSelection = {}
+        local Selection = {}; local OldSelection = {}
         local HasSelection = false
         
-        local function IsCollide(X, Y, PX1, PY1, PX2, PY2) end
-        local function CallSelection() end
+        local IsCollide = Empty
+        local CallSelection = Empty
         
         -- >> Global functions
         
@@ -818,7 +794,7 @@ if CLIENT then
     do
         local Keybind = {}
         
-        local function Input(Key, Down) end
+        local Input = Empty
         
         Keys = {}
         
