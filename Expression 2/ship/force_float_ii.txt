@@ -1,0 +1,116 @@
+@name ship/Force Float II
+@inputs Base:entity
+@outputs Pitch Roll Height Debug
+@persist MMU:table
+
+if(duped() | dupefinished()) { reset() }
+
+if(first() | dupefinished()) {
+    
+    MMU = table()
+    local ShowHolos = 0, local Distance = 0
+    local ForceMul = 0, local ForceDMul = 0, local PitchMul = 0, local PitchDMul = 0, local RollMul = 0, local RollDMul = 0, 
+    local PosOffset = vec(), local AngOffset = ang()
+    Pitch=Roll=Height = 0
+    
+    # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    
+    local UserSettings = function() {
+        
+        # General
+        
+        ShowHolos = 0
+        
+        PosOffset = vec(0, -100, 0)      # Ranger origin
+        
+        AngOffset = ang(0, 0, 90)      # Alignment angle
+        
+        Distance = 120      # Ranger range
+        
+        # Forces
+        
+        ForceMul = 600     # Constant
+        
+        ForceDMul = 150     # Damping
+        
+        # Constants
+        PitchMul = 10 * 2500
+        
+        RollMul = 10 * 250
+        
+        # Dampings
+        PitchDMul = 1 * 2500
+        
+        RollDMul = 1 * 250
+    }
+    
+    # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    
+    # Manager
+    if(1) {
+        local M_Down = vec(0, 0, -1), local M_Up = vec(0, 0, 1)
+        local M_Holo = noentity()
+        
+        local M_Force = vec(), local M_Torque = vec()
+        local M_TorqueMul = vec(), local M_TorqueDMul = vec()
+        
+        # Setup
+        MMU["Initialize",function] = function() {
+            M_Holo = holoCreate(
+                1,
+                Base:toWorld(PosOffset),
+                vec(1),
+                Base:toWorld(AngOffset),
+                vec4(255) * ShowHolos,
+                "models/sprops/misc/origin.mdl"
+            )
+            M_Holo:parentTo(Base)
+            
+            if(ShowHolos) {
+                holoCreate(
+                    2,
+                    M_Holo:toWorld(vec(0, 0, -Distance)),
+                    vec(24, 24, 0.1),
+                    M_Holo:angles(),
+                    vec4(255),
+                    "cube"
+                )
+                holoParent(2, Base)
+            }
+            
+            rangerPersist(1)
+            rangerHitWater(1)
+            rangerIgnoreWorld(1)
+            rangerHitEntities(0)
+            
+            M_TorqueMul = vec(-RollMul, -PitchMul, 0):rotate(AngOffset)
+            M_TorqueDMul = vec(RollDMul, -PitchDMul, 0):rotate(AngOffset)
+        }
+        
+        # Running loop
+        MMU["UpdateForce",function] = function() {
+            local Ranger = rangerOffset(Distance, M_Holo:toWorld(PosOffset), M_Down)
+            
+            if(!Ranger:hit()) { Height = Distance }
+            else { Height = Ranger:distance() }
+            
+            local Angs = M_Holo:angles()
+            Pitch = Angs[1], Roll = Angs[3]
+            
+            M_Force = max((Distance - Height) * ForceMul - Base:vel()[3] * ForceDMul, 0) * M_Up
+            M_Torque = vec(Roll, Pitch, 0):rotate(AngOffset) * M_TorqueMul - Base:angVelVector() * M_TorqueDMul
+        }
+        
+        MMU["ApplyForce",function] = function() {
+            Base:applyForce(M_Force)
+            Base:applyTorque(M_Torque)
+        }
+    }
+    
+    UserSettings()
+    MMU["Initialize",function]()
+}
+
+timer("system-loop", 0.150, 0, MMU["UpdateForce",function])
+
+event tick() { MMU["ApplyForce",function]() }
