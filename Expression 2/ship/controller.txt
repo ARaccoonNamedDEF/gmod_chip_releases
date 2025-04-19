@@ -1,6 +1,6 @@
 @name ship/Controller
 @inputs Pod:wirelink [Base]:entity
-@inputs [FrontShaft BackShaft RudderEnt RudderGate RudderEnt2 RudderGate2]:entity
+@inputs [FrontShaft BackShaft RudderEnt RudderGate]:entity
 @outputs Throttle EngineActive
 @outputs Thrust Rudder
 @persist MMU:table
@@ -64,8 +64,6 @@ if(first() | dupefinished()) {
         ]#
         
         CreateRudder(RudderEnt, RudderGate)
-        
-        CreateRudder(RudderEnt2, RudderGate2)
         
         MinThrottle = 25        # Idle throttle
         
