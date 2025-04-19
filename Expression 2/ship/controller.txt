@@ -82,10 +82,11 @@ if(first() | dupefinished()) {
     CreateShaft = function(Ent:entity, ShaftMul:number) {
         local IShaft = table()
         
-        Ent:propNotSolid(!ShaftSolid)
         local M_Pitch = 0
         
-        IShaft["Initialize",function] = function() { }
+        IShaft["Initialize",function] = function() {
+            Ent:propNotSolid(!ShaftSolid)
+        }
         
         IShaft["SetPitch",function] = function(Pitch:number) {
             M_Pitch = clamp(Pitch, -ShaftMax, ShaftMax)
