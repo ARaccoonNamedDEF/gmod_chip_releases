@@ -1,9 +1,9 @@
 @name ship/Controller
 @inputs Pod:wirelink [Base]:entity
-@inputs [FrontShaft BackShaft RudderEnt RudderGate]:entity
+@inputs [RightShaft LeftShaft RudderEnt RudderGate]:entity
 @outputs Throttle EngineActive
 @outputs Thrust Rudder
-@persist MMU:table
+@persist MMU:table EngineToggle:string
 
 if(duped() | dupefinished()) { reset() }
 
@@ -11,8 +11,10 @@ if(first() | dupefinished()) {
     
     MMU = table(), local Empty = function() {}
     local BaseHolo = noentity(), local ShowHolos = 0, local BaseAlign = ang(0)
-    local ParentGates = 0, local MinThrottle = 0
-    local ShaftSolid = 0, local ShaftMax = 0, local ShaftRate = 0
+    local ParentDelay = 0, local ParentGates = 0, local StickyThrottle = 0
+    local MinThrottle = 0, local ShaftSolid = 0, local ShaftMax = 0
+    local ShaftRate = 0, local ShaftSteps = 0
+    local StickyRudder = 0, local RudderSteps = 0
     local RudderMax = 0, local RudderAV = 0, local RudderMul = 0, local RudderRate = 0
     EngineActive = 0
     local CreateShaft = Empty, local CreateRudder = Empty
@@ -25,9 +27,13 @@ if(first() | dupefinished()) {
         
         ShowHolos = 0
         
-        BaseAlign = ang(0, 0, 90)      # Alignment angle
+        BaseAlign = ang(0, 0, -90)      # Alignment angle
         
         ParentGates = 1         # Set to 1 to parent gates
+        
+        ParentDelay = 0.210     # Gate parent delay (don't touch this)
+        
+        EngineToggle = "h"      # Toggle engine
         
         #[
             Thrust (shaft), example:
@@ -42,14 +48,20 @@ if(first() | dupefinished()) {
                 <Direction>, the number <number> multiplier to correct Fin3 direction
         ]#
         
-        CreateShaft(FrontShaft, 1)
-        CreateShaft(BackShaft, -1)
+        CreateShaft(RightShaft, 1)
+        CreateShaft(LeftShaft, 1)
+        
+        ShaftRate = 1 / 20      # Thrust build % per tick
+        
+        ShaftMax = 13.0           # Maximum thrust
+        
+        MinThrottle = 25        # Idle throttle
         
         ShaftSolid = 0          # Set to 0 to make not solid (remove interaction with water)
         
-        ShaftMax = 20           # Maximum thrust
+        StickyThrottle = 0      # 1 makes the throttle 'stick' to where it last was, 0 is hold-to-throttle
         
-        ShaftRate = 1 / 8       # Thrust build % per input
+        ShaftSteps = 4          # Thrust build % per input, only counts for StickyThrottle
         
         #[
             Rudder, example:
@@ -65,15 +77,18 @@ if(first() | dupefinished()) {
         
         CreateRudder(RudderEnt, RudderGate)
         
-        MinThrottle = 25        # Idle throttle
+        RudderRate = 1 / 10     # Rudder build % per tick
         
-        RudderMax = 45          # Maximum rudder
+        RudderAV = 35           # Maximum rudder target angular velocity
         
-        RudderRate = 1 / 24     # Rudder build % per input cycle
+        RudderMul = 3           # Rudder angular velocity multiplier
         
-        RudderAV = 15           # Rudder target angular velocity
+        RudderMax = 60          # Maximum rudder angle
         
-        RudderMul = 4           # Rudder angular velocity multiplier
+        StickyRudder = 0        # 1 makes the rudder 'stick' to where it last was, 0 is hold-to-steer
+        
+        RudderSteps = 2         # Rudder build % per input, only counts for StickyRudder
+        
     }
     
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -126,7 +141,7 @@ if(first() | dupefinished()) {
             
             Gate:deparent(), Ent:deparent()
             if(ParentGates == 1) {
-                timer("rudder-gate-" + RudderCount, 0.045, 1, function() { Gate:parentTo(M_Holo), Ent:parentTo(Gate) })
+                timer("rudder-gate-" + RudderCount, ParentDelay, 1, function() { Gate:parentTo(M_Holo), Ent:parentTo(Gate) })
             }
         }
         
@@ -136,25 +151,18 @@ if(first() | dupefinished()) {
             M_Holo:setAng(BaseHolo:toWorld(ang(0, M_Ang, 0)))
         }
         
-        IRudder["SetRudder",function] = function(Yaw:number) {
-            M_Ang = clamp(Yaw * M_PosBias, -RudderMax, RudderMax)
-            M_Holo:setAng(BaseHolo:toWorld(ang(0, M_Ang, 0)))
-        }
-        
         MMU["AddRudder",function](IRudder)
     }
     
     # Manager
     if(1) {
-        
         local M_BaseVel = vec(), local M_BaseAngVel = vec()
         local M_VelAng = 0
         
         local M_Shafts = table(), local M_Rudders = table()
         
-        local M_Prop = 0
-        local M_RudderDir = 0
-        local M_Rudder = 0
+        local M_PropTarget = 0, local M_Prop = 0
+        local M_RudderTarget = 0, local M_Rudder = 0
         
         MMU["AddShaft",function] = function(Obj:table) { M_Shafts:pushTable(Obj) }
         MMU["AddRudder",function] = function(Obj:table) { M_Rudders:pushTable(Obj) }
@@ -178,42 +186,51 @@ if(first() | dupefinished()) {
             foreach(_:number, Rudder:table = M_Rudders) {
                 Rudder["Initialize",function]()
             }
-            
-            RudderRate *= RudderAV
-            ShaftRate *= ShaftMax
         }
         
         # Helpers
         MMU["MoveProp",function] = function(Dir:number) {
-            M_Prop = clamp(M_Prop + Dir * ShaftRate, -ShaftMax, ShaftMax)
+            if(StickyThrottle) {
+                M_PropTarget = clamp(M_PropTarget + Dir / ShaftSteps, -1, 1)
+            }
+            else { M_PropTarget = Dir }
         }
         
-        MMU["SetRudder",function] = function(Dir:number) { M_RudderDir = Dir }
+        MMU["SetRudder",function] = function(Dir:number) {
+            if(StickyRudder) {
+                M_RudderTarget = clamp(M_RudderTarget + Dir / RudderSteps, -1, 1)
+            }
+            else { M_RudderTarget = Dir }
+        }
         
         # Running loop
         MMU["Update",function] = function() {
             if(!Pod["Active",number]) { return 0 }
             
             M_BaseVel = Base:velL():rotate(-BaseAlign)
-            M_BaseAngVel = Base:angVelVector():rotate(-BaseAlign)
+            #M_BaseAngVel = Base:angVelVector():rotate(-BaseAlign)
+            M_BaseAngVel = BaseHolo:toLocalAxis(Base:toWorldAxis(Base:angVelVector()))
             local LowPass = max(abs(M_BaseVel[1]), 100)
-            M_VelAng = vec2(LowPass, M_BaseVel[2]):toAngle() * sign(M_BaseVel[1])
+            local XSign = sign(M_BaseVel[1])
+            M_VelAng = vec2(LowPass, M_BaseVel[2]):toAngle() * XSign
             
             # Shaft stuff
+            M_Prop = clamp(M_PropTarget, M_Prop - ShaftRate, M_Prop + ShaftRate)
+            local TotProp = M_Prop * ShaftMax
             foreach(_:number, Shaft:table = M_Shafts) {
-                Shaft["SetPitch",function](M_Prop)
+                Shaft["SetPitch",function](TotProp)
             }
             
             # Rudder stuff
-            M_Rudder = clamp(M_RudderDir * RudderAV, M_Rudder - RudderRate, M_Rudder + RudderRate)
-            local TotRudder = (M_Rudder + M_BaseAngVel[3]) * RudderMul * sign(M_BaseVel[1])
+            M_Rudder = clamp(M_RudderTarget, M_Rudder - RudderRate, M_Rudder + RudderRate)
+            local TotRudder = (M_Rudder * RudderAV + M_BaseAngVel[3] * XSign) * RudderMul
             foreach(_:number, Rudder:table = M_Rudders) {
                 Rudder["SetRudderAOA",function](TotRudder)
             }
             
-            Thrust = M_Prop / ShaftMax
-            Rudder = M_Rudder / RudderAV
-            Throttle = remap(abs(M_Prop), 0, ShaftMax, MinThrottle, 100)
+            Thrust = M_Prop
+            Rudder = M_Rudder
+            Throttle = remap(abs(M_Prop), 0, 1, MinThrottle, 100)
             
             return 1
         }
@@ -226,32 +243,29 @@ if(first() | dupefinished()) {
     
     UserSettings()
     MMU["Initialize",function]()
+    timer("system-loop", 0.120, 0, MMU["Update",function])
 }
 
 event keyPressed(Player:entity, Key:string, Down:number, KeyBind:string) {
     if(Player == Pod["Driver",entity]) {
-        switch(Key) {
-            case "h",
-            if(Down) { EngineActive = !EngineActive }
+        switch(KeyBind) {
+            case "forward",
+            MMU["MoveProp",function](Down)
             break
             
-            case "w",
-            if(Down) { MMU["MoveProp",function](1) }
+            case "back",
+            MMU["MoveProp",function](-Down) 
             break
             
-            case "s",
-            if(Down) { MMU["MoveProp",function](-1) }
-            break
-            
-            case "a",
+            case "moveleft",
             MMU["SetRudder",function](-1 * Down)
             break
             
-            case "d",
+            case "moveright",
             MMU["SetRudder",function](1 * Down)
             break
         }
+        
+        if(Key == EngineToggle & Down) { EngineActive = !EngineActive }
     }
 }
-
-timer("system-loop", 0.120, 0, MMU["Update",function])
