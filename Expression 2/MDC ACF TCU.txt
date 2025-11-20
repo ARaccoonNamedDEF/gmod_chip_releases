@@ -33,10 +33,15 @@ if(first() | dupefinished()) {
     #~ Required to run ~#
     
     ContributeData = 1      # You should leave this as 1, unless you have multiple of these for some reason.
+
+    local IsACF3 = 0        # Set to 1 if using version of ACF-3 that inverts gear ratios
     
     WheelSize = 38          # Your roadwheel diameter.
    
     FinalRatio = 0.20       # Total final drive ratio.
+                            # If using later version of ACF-3, this should be reciprocal of whole number:
+                            # 3 means (1 / 3) or 0.33
+                            # 0.25 is still just 0.25
     
     TransferCase = 1        # Set to 0 unless you are using a transfer case for duplicated, reversed gears.
     
@@ -136,7 +141,7 @@ if(first() | dupefinished()) {
         
         # Using wheel size and ratios to make a shifting speed array.
         for(I = 1, M["GearCount",number], 1) {
-            GearRatio[I,number] = abs(Gearbox:acfGearRatio(I)) * FinalRatio
+            GearRatio[I,number] = (IsACF3 ? 1 / abs(Gearbox:acfGearRatio(I)) : abs(Gearbox:acfGearRatio(I))) * FinalRatio
             GearSpd[I,number] = RatioToSpeed * GearRatio[I,number]
         }
     
