@@ -1,0 +1,104 @@
+@name acx/Armor Parenter
+@inputs [HullGate GunGate TurretGate]:entity
+@inputs [HullArmor GunArmor TurretArmor]:array
+@persist ParentAll:function
+@model models/props_c17/streetsign004f.mdl
+@trigger none
+
+#[
+        This E2 parents your props to a gate.
+    
+        BE CAREFUL! When you < USE > on the E2 (E by default), the E2 will parent all props AND self destruct!
+    Don't worry; it will only do this for you, the owner. Also it will only parent props & self destruct if ALL
+    parents exist.
+]#
+
+if(duped() | dupefinished()) { reset() }
+
+if(first()) {
+    
+    local Empty = function() {}
+    local AddArmorGroup = Empty
+    
+    # # # # # # # # # # # # # # # # # # # # #
+    
+    local PrintToMe = 1     # Set to 1 for entity count message
+    
+    local DestroyOnFinish = 0   # Set to 1 for this e2 to destroy itself when finished
+    
+    local UserSettings = function() {
+        
+        #[
+        
+        AddArmorGroup(entity Parent, array ArmorPieces)
+        
+        [Parent] is the prop you want to parent to
+        
+        [ArmorPieces] is the advanced entity marker that has the props
+        
+        ]#
+        
+        AddArmorGroup(HullGate, HullArmor)
+        AddArmorGroup(GunGate, GunArmor)
+        AddArmorGroup(TurretGate, TurretArmor)
+    }
+    
+    # # # # # # # # # # # # # # # # # # # # #
+    
+    local ParentList = table()
+    local ArmorGroupList = table()
+    
+    # >> Armor group; parents a bunch of entities to another entity
+    
+    AddArmorGroup = function(Parent:entity, Children:array) {
+        local Self = table()
+        ParentList:pushEntity(Parent)
+        ArmorGroupList:pushTable(Self)
+        
+        # Attach to parent
+        Self["Parent",function] = function() {
+            foreach(_:number, Child:entity = Children) {
+                Child:setColor(Child:getColor(), 0)
+                Child:parentTo(Parent)
+            }
+        }
+        
+        Self["GetChildCount",function] = function() {
+            return Children:count()
+        }
+    }
+    
+    # >> Setup
+    
+    # Parent all the groups
+    ParentAll = function() {
+        foreach(_:number, Parent:entity = ParentList) {
+            if(!Parent:isValid()) {
+                print("All parents must be wired!")
+                return
+            }
+        }
+        
+        local EntityCount = 0
+        foreach(_:number, Group:table = ArmorGroupList) {
+            Group["Parent",function]()
+            EntityCount += Group["GetChildCount",function]()[number]
+        }
+        
+        if(PrintToMe) {
+            print(format("Parented %s armor props!", EntityCount))
+        }
+        
+        if(DestroyOnFinish) { selfDestruct() }
+    }
+    
+    # >> Final setup
+    UserSettings()
+}
+
+runOnUse(1)
+
+# Only the owner is allowed to do this
+if(owner() == useClk()) {
+    ParentAll()
+}
